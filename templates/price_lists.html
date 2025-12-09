@@ -1,0 +1,108 @@
+<!-- templates/price_lists.html -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Прайс-листы — Synchronis</title>
+        <style>
+            table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            th { background-color: #f4f4f4; }
+            .actions a, .actions form { display: inline; margin-right: 8px; }
+        </style>
+    </head>
+
+    <body>
+        <!-- Навигационное меню -->
+        <nav style="margin-bottom: 24px; padding: 12px; background-color: #f8f9fa; border-radius: 4px;">
+            <a href="/companies" style="margin-right: 16px; text-decoration: none; color: #007bff; font-weight: bold;">Компании</a>
+            <a href="/price_lists" style="margin-right: 16px; text-decoration: none; color: #28a745;">Прайс-листы</a>
+            <a href="/column_mappings" style="margin-right: 16px; text-decoration: none; color: #dc3545;">Маппинги</a>
+            <!-- Можно добавить Matches позже -->
+        </nav>
+
+        <h1>Прайс-листы</h1>
+        {% if message %}
+        <div id="flash-message" style="
+            padding: 12px;
+            margin-bottom: 16px;
+            border: 1px solid;
+            {% if 'успешно' in message %}
+                background-color: #d4edda; color: #155724; border-color: #c3e6cb;
+            {% else %}
+                background-color: #f8d7da; color: #721c24; border-color: #f5c6cb;
+            {% endif %}
+        ">
+            {{ message }}
+        </div>
+
+        <script>
+            // Скрыть сообщение через 3 секунды (3000 мс)
+            setTimeout(function() {
+                var msg = document.getElementById('flash-message');
+                if (msg) {
+                    msg.style.opacity = '0';
+                    msg.style.transition = 'opacity 0.5s ease';
+                    setTimeout(function() {
+                        msg.style.display = 'none';
+                    }, 500);
+                }
+            }, 3000);
+        </script>
+        {% endif %}
+
+        <form method="post" action="/price_lists">
+            <label>
+                Название прайс-листа:
+                <input type="text" name="name" required style="padding: 4px; margin: 8px 8px 8px 0;">
+            </label>
+            <br>
+            <label>
+                Компания:
+                <select name="company_id" required style="padding: 4px; margin: 8px 0;">
+                    {% for company in companies %}
+                        <option value="{{ company.id }}">{{ company.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <br>
+            <label>
+                <input type="checkbox" name="is_reference" value="true">
+                Это эталонный прайс-лист
+            </label>
+            <br>
+            <button type="submit">Добавить</button>
+        </form>
+        <hr>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Компания</th>
+                    <th>Название</th>
+                    <th>Эталонный</th>
+                    <th>Загружен</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pl in price_lists %}
+                <tr>
+                    <td>{{ pl.id }}</td>
+                    <td>{{ company_map.get(pl.company_id, '—') }}</td>
+                    <td>{{ pl.name }}</td>
+                    <td>{% if pl.is_reference %}Да{% else %}Нет{% endif %}</td>
+                    <td>{{ pl.uploaded_at }}</td>
+                    <td class="actions">
+                        <a href="/price_lists/{{ pl.id }}/edit">Редактировать</a>
+                        <form method="post" action="/price_lists/{{ pl.id }}/delete" style="display:inline;">
+                            <button type="submit" onclick="return confirm('Удалить прайс-лист?')">Удалить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </body>
+</html>

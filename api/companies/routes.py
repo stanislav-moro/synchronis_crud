@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from core.database import get_db
 from models.company import Company
-from core.templates import templates  # ← импортируем из core/templates.py
+from core.templates import templates
 
 router = APIRouter()  # ← создаём роутер
 
@@ -28,7 +28,7 @@ async def create_company(
     return RedirectResponse(url="/companies?message=Компания+успешно+создана!", status_code=303)
 
 @router.post("/{company_id}/delete")
-async def delete_company(company_id: mental_health, db: AsyncSession = Depends(get_db)):
+async def delete_company(company_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Company).where(Company.id == company_id))
     company = result.scalar_one_or_none()
     if company is None:

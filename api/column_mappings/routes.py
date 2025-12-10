@@ -14,7 +14,7 @@ from core.templates import templates
 router = APIRouter()
 
 
-@router.get("/column_mappings")
+@router.get("")
 async def read_column_mappings(
         request: Request,
         db: AsyncSession = Depends(get_db),
@@ -41,7 +41,7 @@ async def read_column_mappings(
     )
 
 
-@router.post("/column_mappings")
+@router.post("")
 async def create_column_mapping(
         request: Request,
         name: str = Form(...),
@@ -140,7 +140,7 @@ async def create_column_mapping(
     )
 
 
-@router.post("/column_mappings/{mapping_id}/delete")
+@router.post("/{mapping_id}/delete")
 async def delete_column_mapping(mapping_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ColumnMapping).where(ColumnMapping.id == mapping_id))
     mapping = result.scalar_one_or_none()
@@ -151,7 +151,7 @@ async def delete_column_mapping(mapping_id: int, db: AsyncSession = Depends(get_
     return RedirectResponse(url="/column_mappings?message=Маппинг+успешно+удалён!", status_code=303)
 
 
-@router.get("/column_mappings/{mapping_id}/edit")
+@router.get("/{mapping_id}/edit")
 async def edit_column_mapping_form(
         mapping_id: int,
         request: Request,
@@ -176,7 +176,7 @@ async def edit_column_mapping_form(
     )
 
 
-@router.post("/column_mappings/{mapping_id}/edit")
+@router.post("/{mapping_id}/edit")
 async def update_column_mapping(
         mapping_id: int,
         request: Request,

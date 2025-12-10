@@ -1,4 +1,4 @@
-# main.py
+# main.pyпше
 from fastapi import FastAPI
 from core.templates import templates
 from api.companies.routes import router as companies_router

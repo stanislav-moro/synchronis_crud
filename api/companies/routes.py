@@ -10,31 +10,45 @@ from main import templates  # ← предполагается, что templates
 
 router = APIRouter()
 
-@router.get("")
+@app.get("/companies")
 async def read_companies_html(request: Request, db: AsyncSession = Depends(get_db), message: str = None):
     result = await db.execute(select(Company))
     companies = result.scalars().all()
     return templates.TemplateResponse("companies.html", {"request": request, "companies": companies, "message": message})
 
-@router.post("")
-async def create_company(name: str = Form(...), db: AsyncSession = Depends(get_db)):
+
+@app.post("/companies")
+async def create_company(
+    name: str = Form(...),
+    db: AsyncSession = Depends(get_db)
+):
+    # Создаём объект компании
     new_company = Company(name=name)
+    # Добавляем в сессию
     db.add(new_company)
+    # Сохраняем в БД
     await db.commit()
+    # Обновляем данные (например, id и created_at)
     await db.refresh(new_company)
+    # Перенаправляем обратно на список
     return RedirectResponse(url="/companies?message=Компания+успешно+создана!", status_code=303)
 
-@router.post("/{company_id}/delete")
+
+@app.post("/companies/{company_id}/delete")
 async def delete_company(company_id: int, db: AsyncSession = Depends(get_db)):
+    # Найти компанию
     result = await db.execute(select(Company).where(Company.id == company_id))
     company = result.scalar_one_or_none()
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
+    # Удалить
     await db.delete(company)
     await db.commit()
+    # Перенаправить обратно
     return RedirectResponse(url="/companies?message=Компания+успешно+удалена!", status_code=303)
 
-@router.get("/{company_id}/edit")
+
+@app.get("/companies/{company_id}/edit")
 async def edit_company_form(company_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Company).where(Company.id == company_id))
     company = result.scalar_one_or_none()
@@ -42,7 +56,8 @@ async def edit_company_form(company_id: int, request: Request, db: AsyncSession 
         raise HTTPException(status_code=404, detail="Company not found")
     return templates.TemplateResponse("edit_company.html", {"request": request, "company": company})
 
-@router.post("/{company_id}/edit")
+
+@app.post("/companies/{company_id}/edit")
 async def update_company(
     company_id: int,
     name: str = Form(...),
@@ -55,3 +70,8 @@ async def update_company(
     company.name = name
     await db.commit()
     return RedirectResponse(url="/companies?message=Компания+успешно+обновлена!", status_code=303)
+
+
+# @app.get("/")
+# async def root():
+#     return RedirectResponse(url="/companies")

@@ -13,25 +13,19 @@ from core.templates import templates  # ← используем общий ша
 router = APIRouter()
 
 
-@router.get("")
+@app.get("/price_lists")
 async def read_price_lists(
         request: Request,
-        company_id: int = None,  # ← фильтр по компании
         db: AsyncSession = Depends(get_db),
         message: str = None
 ):
-    # Получаем все компании для фильтра и отображения
     companies_result = await db.execute(select(Company))
-    all_companies = companies_result.scalars().all()
-    company_map = {c.id: c.name for c in all_companies}
+    companies = companies_result.scalars().all()
 
-    # Формируем запрос с фильтром
-    query = select(PriceList)
-    if company_id is not None:
-        query = query.where(PriceList.company_id == company_id)
-
-    pl_result = await db.execute(query)
+    pl_result = await db.execute(select(PriceList))
     price_lists = pl_result.scalars().all()
+
+    company_map = {c.id: c.name for c in companies}
 
     return templates.TemplateResponse(
         "price_lists.html",
@@ -39,14 +33,13 @@ async def read_price_lists(
             "request": request,
             "price_lists": price_lists,
             "company_map": company_map,
-            "all_companies": all_companies,
-            "selected_company_id": company_id,
+            "companies": companies,
             "message": message
         }
     )
 
 
-@router.post("")
+@app.post("/price_lists")
 async def create_price_list(
         name: str = Form(...),
         company_id: int = Form(...),
@@ -55,6 +48,7 @@ async def create_price_list(
 ):
     is_ref = is_reference == "true"
 
+    # Проверка существования компании (как раньше)
     company_result = await db.execute(select(Company).where(Company.id == company_id))
     company = company_result.scalar_one_or_none()
     if not company:
@@ -72,6 +66,7 @@ async def create_price_list(
         await db.refresh(new_pl)
     except IntegrityError:
         await db.rollback()
+        # Перенаправляем обратно на /price_lists с сообщением об ошибке
         return RedirectResponse(
             url="/price_lists?message=Для+этой+компании+уже+существует+эталонный+прайс-лист.+Разрешён+только+один.",
             status_code=303
@@ -80,7 +75,7 @@ async def create_price_list(
     return RedirectResponse(url="/price_lists?message=Прайс-лист+успешно+создан!", status_code=303)
 
 
-@router.post("/{price_list_id}/delete")
+@app.post("/price_lists/{price_list_id}/delete")
 async def delete_price_list(price_list_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(PriceList).where(PriceList.id == price_list_id))
     price_list = result.scalar_one_or_none()
@@ -91,7 +86,7 @@ async def delete_price_list(price_list_id: int, db: AsyncSession = Depends(get_d
     return RedirectResponse(url="/price_lists?message=Прайс-лист+успешно+удалён!", status_code=303)
 
 
-@router.get("/{price_list_id}/edit")
+@app.get("/price_lists/{price_list_id}/edit")
 async def edit_price_list_form(
         price_list_id: int,
         request: Request,
@@ -101,17 +96,13 @@ async def edit_price_list_form(
     price_list = result.scalar_one_or_none()
     if not price_list:
         raise HTTPException(status_code=404, detail="Price list not found")
-
-    companies_result = await db.execute(select(Company))
-    companies = companies_result.scalars().all()
-
     return templates.TemplateResponse(
         "edit_price_list.html",
-        {"request": request, "price_list": price_list, "companies": companies}
+        {"request": request, "price_list": price_list}
     )
 
 
-@router.post("/{price_list_id}/edit")
+@app.post("/price_lists/{price_list_id}/edit")
 async def update_price_list(
         price_list_id: int,
         name: str = Form(...),
@@ -130,9 +121,28 @@ async def update_price_list(
         await db.commit()
     except IntegrityError:
         await db.rollback()
+        # Перенаправляем обратно на /price_lists с сообщением об ошибке
         return RedirectResponse(
             url="/price_lists?message=Для+этой+компании+уже+существует+эталонный+прайс-лист.+Разрешён+только+один.",
             status_code=303
         )
 
     return RedirectResponse(url="/price_lists?message=Прайс-лист+успешно+обновлён!", status_code=303)
+
+
+
+
+
+
+
+
+
+
+def json_dumps(value, indent=None):
+    """Кастомный фильтр для Jinja2 с поддержкой ensure_ascii=False"""
+    return json.dumps(value, indent=indent, ensure_ascii=False)
+
+
+# Регистрируем фильтр
+templates.env.filters["json_dumps"] = json_dumps
+app = FastAPI(title="Synchronis CRUD")

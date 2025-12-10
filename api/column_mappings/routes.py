@@ -14,22 +14,19 @@ from core.templates import templates
 router = APIRouter()
 
 
-@router.get("")
+@app.get("/column_mappings")
 async def read_column_mappings(
         request: Request,
-        company_id: Optional[int] = None,  # ← фильтр по компании
         db: AsyncSession = Depends(get_db),
         message: str = None
 ):
-    companies_result = await db.execute(select(Company))
-    all_companies = companies_result.scalars().all()
-    company_map = {c.id: c.name for c in all_companies}
+    # Получаем компании для выпадающего списка и отображения
+    company_result = await db.execute(select(Company))
+    companies = company_result.scalars().all()
+    company_map = {c.id: c.name for c in companies}
 
-    query = select(ColumnMapping)
-    if company_id is not None:
-        query = query.where(ColumnMapping.company_id == company_id)
-
-    cm_result = await db.execute(query)
+    # Получаем все маппинги
+    cm_result = await db.execute(select(ColumnMapping))
     column_mappings = cm_result.scalars().all()
 
     return templates.TemplateResponse(
@@ -38,14 +35,13 @@ async def read_column_mappings(
             "request": request,
             "column_mappings": column_mappings,
             "company_map": company_map,
-            "all_companies": all_companies,
-            "selected_company_id": company_id,
+            "companies": companies,
             "message": message
         }
     )
 
 
-@router.post("")
+@app.post("/column_mappings")
 async def create_column_mapping(
         request: Request,
         name: str = Form(...),
@@ -55,6 +51,7 @@ async def create_column_mapping(
         company_id: int = Form(...),
         db: AsyncSession = Depends(get_db)
 ):
+    # Загружаем данные для формы (на случай ошибки)
     companies_result = await db.execute(select(Company))
     companies = companies_result.scalars().all()
     company_map = {c.id: c.name for c in companies}
@@ -73,8 +70,7 @@ async def create_column_mapping(
                 "request": request,
                 "column_mappings": column_mappings,
                 "company_map": company_map,
-                "all_companies": companies,
-                "selected_company_id": company_id,
+                "companies": companies,
                 "message": "Некорректный JSON в поле 'Маппинг'. Исправьте ошибку и попробуйте снова.",
                 "prefill": {
                     "name": name,
@@ -86,6 +82,7 @@ async def create_column_mapping(
             }
         )
 
+    # Проверка существования компании
     if company_id not in company_map:
         return templates.TemplateResponse(
             "column_mappings.html",
@@ -93,8 +90,7 @@ async def create_column_mapping(
                 "request": request,
                 "column_mappings": column_mappings,
                 "company_map": company_map,
-                "all_companies": companies,
-                "selected_company_id": company_id,
+                "companies": companies,
                 "message": "Выбрана несуществующая компания.",
                 "prefill": {
                     "name": name,
@@ -106,6 +102,7 @@ async def create_column_mapping(
             }
         )
 
+    # Проверка типа источника
     if source_type not in {"supplier", "customer", "internal"}:
         return templates.TemplateResponse(
             "column_mappings.html",
@@ -113,8 +110,7 @@ async def create_column_mapping(
                 "request": request,
                 "column_mappings": column_mappings,
                 "company_map": company_map,
-                "all_companies": companies,
-                "selected_company_id": company_id,
+                "companies": companies,
                 "message": "Недопустимый тип источника.",
                 "prefill": {
                     "name": name,
@@ -126,10 +122,11 @@ async def create_column_mapping(
             }
         )
 
+    # === СОЗДАНИЕ И СОХРАНЕНИЕ ===
     new_cm = ColumnMapping(
         name=name,
         source_type=source_type,
-        mapping=mapping_dict,
+        mapping=mapping_dict,  # ← передаём словарь
         is_default=(is_default == "true"),
         company_id=company_id
     )
@@ -143,7 +140,7 @@ async def create_column_mapping(
     )
 
 
-@router.post("/{mapping_id}/delete")
+@app.post("/column_mappings/{mapping_id}/delete")
 async def delete_column_mapping(mapping_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(ColumnMapping).where(ColumnMapping.id == mapping_id))
     mapping = result.scalar_one_or_none()
@@ -151,13 +148,10 @@ async def delete_column_mapping(mapping_id: int, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=404, detail="Маппинг не найден")
     await db.delete(mapping)
     await db.commit()
-    return RedirectResponse(
-        url="/column_mappings?message=Маппинг+успешно+удалён!",
-        status_code=303
-    )
+    return RedirectResponse(url="/column_mappings?message=Маппинг+успешно+удалён!", status_code=303)
 
 
-@router.get("/{mapping_id}/edit")
+@app.get("/column_mappings/{mapping_id}/edit")
 async def edit_column_mapping_form(
         mapping_id: int,
         request: Request,
@@ -168,6 +162,7 @@ async def edit_column_mapping_form(
     if not mapping:
         raise HTTPException(status_code=404, detail="Маппинг не найден")
 
+    # Получаем компании для выпадающего списка
     companies_result = await db.execute(select(Company))
     companies = companies_result.scalars().all()
 
@@ -181,17 +176,18 @@ async def edit_column_mapping_form(
     )
 
 
-@router.post("/{mapping_id}/edit")
+@app.post("/column_mappings/{mapping_id}/edit")
 async def update_column_mapping(
         mapping_id: int,
         request: Request,
         name: str = Form(...),
         source_type: str = Form(...),
-        mapping: Optional[str] = Form(None),
+        mapping: Optional[str] = Form(None),  # ← стало опциональным
         is_default: Optional[str] = Form(None),
         company_id: int = Form(...),
         db: AsyncSession = Depends(get_db)
 ):
+    # Получаем текущий маппинг и список компаний
     result = await db.execute(select(ColumnMapping).where(ColumnMapping.id == mapping_id))
     mapping_obj = result.scalar_one_or_none()
     if not mapping_obj:
@@ -200,6 +196,7 @@ async def update_column_mapping(
     companies_result = await db.execute(select(Company))
     companies = companies_result.scalars().all()
 
+    # === РУЧНАЯ ВАЛИДАЦИЯ ===
     if not mapping:
         return templates.TemplateResponse(
             "edit_column_mapping.html",
@@ -209,7 +206,7 @@ async def update_column_mapping(
                     "id": mapping_id,
                     "name": name,
                     "source_type": source_type,
-                    "mapping": "",
+                    "mapping": "",  # пустая строка
                     "is_default": is_default == "true",
                     "company_id": company_id
                 },
@@ -218,6 +215,7 @@ async def update_column_mapping(
             }
         )
 
+    # Валидация JSON
     try:
         mapping_dict = json.loads(mapping)
         if not isinstance(mapping_dict, dict):
@@ -258,6 +256,7 @@ async def update_column_mapping(
             }
         )
 
+    # Обновляем запись
     mapping_obj.name = name
     mapping_obj.source_type = source_type
     mapping_obj.mapping = mapping_dict

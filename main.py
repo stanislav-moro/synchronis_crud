@@ -1,6 +1,6 @@
 # main.py
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse  # ← добавьте этот импорт
+from fastapi.responses import RedirectResponse
 from core.templates import templates
 from api.companies.routes import router as companies_router
 from api.price_lists.routes import router as price_lists_router

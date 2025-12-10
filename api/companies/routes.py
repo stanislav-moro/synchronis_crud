@@ -8,7 +8,7 @@ from core.database import get_db
 from models.company import Company
 from core.templates import templates
 
-router = APIRouter()  # ← создаём роутер
+router = APIRouter()
 
 @router.get("")
 async def read_companies_html(request: Request, db: AsyncSession = Depends(get_db), message: str = None):

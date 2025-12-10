@@ -182,7 +182,7 @@ async def update_column_mapping(
         request: Request,
         name: str = Form(...),
         source_type: str = Form(...),
-        mapping: Optional[str] = Form(None),  # ← стало опциональным
+        mapping: Optional[str] = Form(None),
         is_default: Optional[str] = Form(None),
         company_id: int = Form(...),
         db: AsyncSession = Depends(get_db)

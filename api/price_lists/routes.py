@@ -13,7 +13,7 @@ from core.templates import templates  # ← используем общий ша
 router = APIRouter()
 
 
-@app.get("/price_lists")
+@router.get("/price_lists")
 async def read_price_lists(
         request: Request,
         db: AsyncSession = Depends(get_db),
@@ -39,7 +39,7 @@ async def read_price_lists(
     )
 
 
-@app.post("/price_lists")
+@router.post("/price_lists")
 async def create_price_list(
         name: str = Form(...),
         company_id: int = Form(...),
@@ -75,7 +75,7 @@ async def create_price_list(
     return RedirectResponse(url="/price_lists?message=Прайс-лист+успешно+создан!", status_code=303)
 
 
-@app.post("/price_lists/{price_list_id}/delete")
+@router.post("/price_lists/{price_list_id}/delete")
 async def delete_price_list(price_list_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(PriceList).where(PriceList.id == price_list_id))
     price_list = result.scalar_one_or_none()
@@ -86,7 +86,7 @@ async def delete_price_list(price_list_id: int, db: AsyncSession = Depends(get_d
     return RedirectResponse(url="/price_lists?message=Прайс-лист+успешно+удалён!", status_code=303)
 
 
-@app.get("/price_lists/{price_list_id}/edit")
+@router.get("/price_lists/{price_list_id}/edit")
 async def edit_price_list_form(
         price_list_id: int,
         request: Request,
@@ -102,7 +102,7 @@ async def edit_price_list_form(
     )
 
 
-@app.post("/price_lists/{price_list_id}/edit")
+@router.post("/price_lists/{price_list_id}/edit")
 async def update_price_list(
         price_list_id: int,
         name: str = Form(...),
@@ -128,21 +128,3 @@ async def update_price_list(
         )
 
     return RedirectResponse(url="/price_lists?message=Прайс-лист+успешно+обновлён!", status_code=303)
-
-
-
-
-
-
-
-
-
-
-def json_dumps(value, indent=None):
-    """Кастомный фильтр для Jinja2 с поддержкой ensure_ascii=False"""
-    return json.dumps(value, indent=indent, ensure_ascii=False)
-
-
-# Регистрируем фильтр
-templates.env.filters["json_dumps"] = json_dumps
-app = FastAPI(title="Synchronis CRUD")

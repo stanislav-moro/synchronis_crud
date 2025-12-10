@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from models.base import Base
 
+
 class ColumnMapping(Base):
     __tablename__ = "column_mappings"
 

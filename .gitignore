@@ -4,17 +4,18 @@ env/
 ENV/
 .venv/
 .env
+.env/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
+*.pyc
 *$py.class
-
-# Секреты
-.env
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+
+Lib/
+Scripts/

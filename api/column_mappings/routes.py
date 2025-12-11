@@ -10,32 +10,50 @@ from core.database import get_db
 from models.column_mapping import ColumnMapping
 from models.company import Company
 from core.templates import templates
+from typing import Optional
+
 
 router = APIRouter()
+
+from typing import Optional  # ← убедитесь, что импорт есть в начале файла
 
 
 @router.get("")
 async def read_column_mappings(
-        request: Request,
-        db: AsyncSession = Depends(get_db),
-        message: str = None
+    request: Request,
+    company_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    message: str = None
 ):
-    # Получаем компании для выпадающего списка и отображения
-    company_result = await db.execute(select(Company))
-    companies = company_result.scalars().all()
-    company_map = {c.id: c.name for c in companies}
+    # 1. Получаем ВСЕ компании
+    all_companies_result = await db.execute(select(Company))
+    all_companies = all_companies_result.scalars().all()
+    company_map = {c.id: c.name for c in all_companies}
 
-    # Получаем все маппинги
-    cm_result = await db.execute(select(ColumnMapping))
+    # 2. Безопасно парсим company_id
+    company_id_int = None
+    if company_id and company_id.strip() != "":
+        try:
+            company_id_int = int(company_id)
+        except (ValueError, TypeError):
+            company_id_int = None
+
+    # 3. Получаем маппинги (с фильтром, если нужно)
+    query = select(ColumnMapping)
+    if company_id_int is not None:
+        query = query.where(ColumnMapping.company_id == company_id_int)
+    cm_result = await db.execute(query)
     column_mappings = cm_result.scalars().all()
 
+    # 4. Передаём ВСЕ нужные переменные в шаблон
     return templates.TemplateResponse(
         "column_mappings.html",
         {
             "request": request,
             "column_mappings": column_mappings,
             "company_map": company_map,
-            "companies": companies,
+            "all_companies": all_companies,      # ← КЛЮЧЕВАЯ ПЕРЕМЕННАЯ
+            "selected_company_id": company_id_int,
             "message": message
         }
     )

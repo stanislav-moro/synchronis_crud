@@ -9,6 +9,8 @@ from core.database import get_db
 from models.price_list import PriceList
 from models.company import Company
 from core.templates import templates
+from typing import Optional
+
 
 router = APIRouter()
 
@@ -16,16 +18,29 @@ router = APIRouter()
 @router.get("")
 async def read_price_lists(
         request: Request,
+        company_id: Optional[str] = None,
         db: AsyncSession = Depends(get_db),
         message: str = None
 ):
-    companies_result = await db.execute(select(Company))
-    companies = companies_result.scalars().all()
+    # Обработка пустого значения
+    if company_id == "" or company_id is None:
+        company_id_int = None
+    else:
+        try:
+            company_id_int = int(company_id)
+        except ValueError:
+            company_id_int = None
 
-    pl_result = await db.execute(select(PriceList))
+    all_companies_result = await db.execute(select(Company))
+    all_companies = all_companies_result.scalars().all()
+    company_map = {c.id: c.name for c in all_companies}
+
+    query = select(PriceList)
+    if company_id_int is not None:
+        query = query.where(PriceList.company_id == company_id_int)
+
+    pl_result = await db.execute(query)
     price_lists = pl_result.scalars().all()
-
-    company_map = {c.id: c.name for c in companies}
 
     return templates.TemplateResponse(
         "price_lists.html",
@@ -33,7 +48,8 @@ async def read_price_lists(
             "request": request,
             "price_lists": price_lists,
             "company_map": company_map,
-            "companies": companies,
+            "all_companies": all_companies,
+            "selected_company_id": company_id_int,
             "message": message
         }
     )

@@ -1,20 +1,18 @@
 <!-- templates/edit_company.html -->
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Редактировать компанию — Synchronis</title>
-</head>
-<body>
-    <h1>Редактировать компанию</h1>
+{% extends "base.html" %}
+
+{% block title %}Редактировать компанию — Synchronis{% endblock %}
+
+{% block content %}
+    <h2>Редактировать компанию</h2>
+
     <form method="post" action="/companies/{{ company.id }}/edit">
         <label>
             Название:
-            <input type="text" name="name" value="{{ company.name }}" required style="padding: 4px; margin: 8px 0;">
+            <input type="text" name="name" value="{{ company.name }}" required>
         </label>
-        <br>
+
         <button type="submit">Сохранить</button>
-        <a href="/companies" style="margin-left: 16px;">Отмена</a>
+        <a href="/companies">Отмена</a>
     </form>
-</body>
-</html>
+{% endblock %}

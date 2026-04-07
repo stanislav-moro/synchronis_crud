@@ -26,4 +26,4 @@ logs/
 
 # IDE
 .vscode/
-.idea/
+.idea/include

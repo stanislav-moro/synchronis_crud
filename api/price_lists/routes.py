@@ -10,6 +10,7 @@ from models.price_list import PriceList
 from models.company import Company
 from core.templates import templates
 from typing import Optional
+from services.log import LogInstance
 
 
 router = APIRouter()
@@ -22,6 +23,7 @@ async def read_price_lists(
         db: AsyncSession = Depends(get_db),
         message: str = None
 ):
+    await LogInstance.debug(f"[PriceLists] Запрос списка прайсов. Фильтр company_id={company_id}")
     # Обработка пустого значения
     if company_id == "" or company_id is None:
         company_id_int = None
@@ -41,6 +43,7 @@ async def read_price_lists(
 
     pl_result = await db.execute(query)
     price_lists = pl_result.scalars().all()
+    await LogInstance.debug(f"[PriceLists] Найдено прайсов: {len(price_lists)}")
 
     return templates.TemplateResponse(
         "price_lists.html",
@@ -63,11 +66,13 @@ async def create_price_list(
         db: AsyncSession = Depends(get_db)
 ):
     is_ref = is_reference == "true"
+    await LogInstance.info(f"[PriceLists] Запрос на создание прайса: name='{name}', company_id={company_id}, is_ref={is_ref}")
 
     # Проверка существования компании (как раньше)
     company_result = await db.execute(select(Company).where(Company.id == company_id))
     company = company_result.scalar_one_or_none()
     if not company:
+        await LogInstance.warning(f"[PriceLists] Компания не найдена: id={company_id}")
         raise HTTPException(status_code=400, detail="Компания не найдена")
 
     new_pl = PriceList(
@@ -80,8 +85,10 @@ async def create_price_list(
     try:
         await db.commit()
         await db.refresh(new_pl)
+        await LogInstance.info(f"[PriceLists] Прайс создан: id={new_pl.id}, name='{new_pl.name}'")
     except IntegrityError:
         await db.rollback()
+        await LogInstance.warning(f"[PriceLists] Ошибка создания: уже существует эталонный прайс для company_id={company_id}")
         # Перенаправляем обратно на /price_lists с сообщением об ошибке
         return RedirectResponse(
             url="/price_lists?message=Для+этой+компании+уже+существует+эталонный+прайс-лист.+Разрешён+только+один.",
@@ -93,12 +100,15 @@ async def create_price_list(
 
 @router.post("/{price_list_id}/delete")
 async def delete_price_list(price_list_id: int, db: AsyncSession = Depends(get_db)):
+    await LogInstance.info(f"[PriceLists] Запрос на удаление прайса: id={price_list_id}")
     result = await db.execute(select(PriceList).where(PriceList.id == price_list_id))
     price_list = result.scalar_one_or_none()
     if price_list is None:
+        await LogInstance.warning(f"[PriceLists] Прайс не найден для удаления: id={price_list_id}")
         raise HTTPException(status_code=404, detail="Price list not found")
     await db.delete(price_list)
     await db.commit()
+    await LogInstance.info(f"[PriceLists] Прайс удалён: id={price_list_id}")
     return RedirectResponse(url="/price_lists?message=Прайс-лист+успешно+удалён!", status_code=303)
 
 
@@ -108,9 +118,11 @@ async def edit_price_list_form(
         request: Request,
         db: AsyncSession = Depends(get_db)
 ):
+    await LogInstance.debug(f"[PriceLists] Запрос формы редактирования: id={price_list_id}")
     result = await db.execute(select(PriceList).where(PriceList.id == price_list_id))
     price_list = result.scalar_one_or_none()
     if not price_list:
+        await LogInstance.warning(f"[PriceLists] Прайс не найден для редактирования: id={price_list_id}")
         raise HTTPException(status_code=404, detail="Price list not found")
     return templates.TemplateResponse(
         "edit_price_list.html",
@@ -125,9 +137,11 @@ async def update_price_list(
         is_reference: str = Form(None),
         db: AsyncSession = Depends(get_db)
 ):
+    await LogInstance.info(f"[PriceLists] Запрос на обновление прайса: id={price_list_id}, new_name='{name}'")
     result = await db.execute(select(PriceList).where(PriceList.id == price_list_id))
     price_list = result.scalar_one_or_none()
     if not price_list:
+        await LogInstance.warning(f"[PriceLists] Прайс не найден для обновления: id={price_list_id}")
         raise HTTPException(status_code=404, detail="Прайс-лист не найден")
 
     price_list.name = name
@@ -135,8 +149,10 @@ async def update_price_list(
 
     try:
         await db.commit()
+        await LogInstance.info(f"[PriceLists] Прайс обновлён: id={price_list_id}, name='{price_list.name}'")
     except IntegrityError:
         await db.rollback()
+        await LogInstance.warning(f"[PriceLists] Ошибка обновления: уже существует эталонный прайс для этой компании")
         # Перенаправляем обратно на /price_lists с сообщением об ошибке
         return RedirectResponse(
             url="/price_lists?message=Для+этой+компании+уже+существует+эталонный+прайс-лист.+Разрешён+только+один.",

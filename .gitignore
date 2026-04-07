@@ -9,6 +9,7 @@ ENV/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.pyc
+*.py[cod]
 *$py.class
 
 # IDE
@@ -19,3 +20,10 @@ __pycache__/
 
 Lib/
 Scripts/
+
+# Логи
+logs/
+
+# IDE
+.vscode/
+.idea/

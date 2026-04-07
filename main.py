@@ -7,6 +7,7 @@ from api.price_lists.routes import router as price_lists_router
 from api.column_mappings.routes import router as column_mappings_router
 from fastapi.staticfiles import StaticFiles
 
+
 app = FastAPI(title="Synchronis CRUD")
 
 # Раздача статических файлов (CSS, JS, изображения)
@@ -23,4 +24,5 @@ app.include_router(companies_router, prefix="/companies")
 app.include_router(price_lists_router, prefix="/price_lists")
 app.include_router(column_mappings_router, prefix="/column_mappings")
 
-# Запуск сервера: uvicorn main:app --reload
+# Запуск сервера: uvicorn main:app --reload (через терминал)
+# Для запуска с ноута: uvicorn main:app --host 0.0.0.0 --port 8000

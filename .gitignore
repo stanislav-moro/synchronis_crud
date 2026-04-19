@@ -3,27 +3,25 @@ venv/
 env/
 ENV/
 .venv/
-.env
-.env/
+include/
+Lib/
+Scripts/
+pyvenv.cfg
 
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
-*.pyc
 *.py[cod]
 *$py.class
+*.so
 
-# IDE
+# Логи
+logs/
+*.log
+
+# IDE & OS
 .idea/
 .vscode/
 *.swp
 *.swo
-
-Lib/
-Scripts/
-
-# Логи
-logs/
-
-# IDE
-.vscode/
-.idea/include
+.DS_Store
+Thumbs.db

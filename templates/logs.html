@@ -1,0 +1,31 @@
+<!-- templates/logs.html -->
+{% extends "base.html" %}
+
+{% block title %}Live Logs — Synchronis{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+    <h2>Системные логи (паттерн Singleton)</h2>
+    <a href="/" class="btn btn-sm">На главную</a>
+</div>
+
+<div style="background-color: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 8px; height: 70vh; overflow-y: auto; font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; box-shadow: inset 0 0 10px #000;">
+    <!-- |safe нужен, чтобы не экранировать спецсимволы, хотя для логов это обычно не критично, но полезно -->
+    <pre style="margin: 0; white-space: pre-wrap;">{{ content | safe }}</pre>
+</div>
+
+<script>
+    // Скролл вниз при загрузке
+    const box = document.querySelector('div[style*="overflow-y"]');
+    if (box) box.scrollTop = box.scrollHeight;
+
+    // Автообновление каждые 3 секунды (если хочешь видеть новые логи сразу)
+    setTimeout(() => {
+        // Проверяем, не скроллит ли пользователь вручную, чтобы не дергать
+        // Для простоты пока просто обновляем страницу
+        // location.reload();
+    }, 3000);
+
+    // Лучше сделаем кнопку обновления, чтобы не бесить
+</script>
+{% endblock %}

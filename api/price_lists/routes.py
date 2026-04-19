@@ -11,20 +11,63 @@ from models.company import Company
 from core.templates import templates
 from typing import Optional
 from services.log import LogInstance
-
+from services.strategies import SortByNameStrategy, SortByDateStrategy # РАСКАТОВ ONLY
 
 router = APIRouter()
+
+# ИСХОДНЫЙ ВАРИАНТ ДО РАСКАТОВОЙ, ОТКАТИТЬ ПОТОМ
+# @router.get("")
+# async def read_price_lists(
+#         request: Request,
+#         company_id: Optional[str] = None,
+#         db: AsyncSession = Depends(get_db),
+#         message: str = None
+# ):
+#     await LogInstance.debug(f"[PriceLists] Запрос списка прайсов. Фильтр company_id={company_id}")
+#     # Обработка пустого значения
+#     if company_id == "" or company_id is None:
+#         company_id_int = None
+#     else:
+#         try:
+#             company_id_int = int(company_id)
+#         except ValueError:
+#             company_id_int = None
+#
+#     all_companies_result = await db.execute(select(Company))
+#     all_companies = all_companies_result.scalars().all()
+#     company_map = {c.id: c.name for c in all_companies}
+#
+#     query = select(PriceList)
+#     if company_id_int is not None:
+#         query = query.where(PriceList.company_id == company_id_int)
+#
+#     pl_result = await db.execute(query)
+#     price_lists = pl_result.scalars().all()
+#     await LogInstance.debug(f"[PriceLists] Найдено прайсов: {len(price_lists)}")
+#
+#     return templates.TemplateResponse(
+#         "price_lists.html",
+#         {
+#             "request": request,
+#             "price_lists": price_lists,
+#             "company_map": company_map,
+#             "all_companies": all_companies,
+#             "selected_company_id": company_id_int,
+#             "message": message
+#         }
+#     )
 
 
 @router.get("")
 async def read_price_lists(
         request: Request,
         company_id: Optional[str] = None,
+        sort_by: str = "name",
         db: AsyncSession = Depends(get_db),
         message: str = None
 ):
-    await LogInstance.debug(f"[PriceLists] Запрос списка прайсов. Фильтр company_id={company_id}")
-    # Обработка пустого значения
+    await LogInstance.debug(f"[PriceLists] Запрос списка. Фильтр: {company_id}, Сортировка: {sort_by}")
+
     if company_id == "" or company_id is None:
         company_id_int = None
     else:
@@ -43,7 +86,17 @@ async def read_price_lists(
 
     pl_result = await db.execute(query)
     price_lists = pl_result.scalars().all()
-    await LogInstance.debug(f"[PriceLists] Найдено прайсов: {len(price_lists)}")
+
+    # Выбираем нужный алгоритм в зависимости от параметра sort_by
+    if sort_by == "date":
+        strategy = SortByDateStrategy()
+    else:
+        strategy = SortByNameStrategy()  # По умолчанию
+
+    # Запускаем стратегию
+    price_lists = await strategy.sort(price_lists)
+
+    await LogInstance.debug(f"[PriceLists] Возвращено прайсов: {len(price_lists)}")
 
     return templates.TemplateResponse(
         "price_lists.html",

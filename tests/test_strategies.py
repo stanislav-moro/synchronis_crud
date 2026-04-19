@@ -34,3 +34,19 @@ async def test_sort_by_date_descending():
     result = await strategy.sort(items)
     dates = [item.uploaded_at for item in result]
     assert dates == sorted(dates, reverse=True), "Сортировка по дате нарушена"
+
+@pytest.mark.asyncio
+async def test_sort_empty_list():
+    """Edge case: Стратегия должна корректно обрабатывать пустой список"""
+    strategy = SortByNameStrategy()
+    result = await strategy.sort([])
+    assert result == [], "Сортировка пустого списка должна возвращать пустой список"
+
+@pytest.mark.asyncio
+async def test_sort_single_item():
+    """Edge case: Список из одного элемента должен возвращаться без изменений"""
+    item = MockPriceList("Apple", datetime.now())
+    strategy = SortByNameStrategy()
+    result = await strategy.sort([item])
+    assert len(result) == 1
+    assert result[0].name == "Apple", "Список из одного элемента изменился"
